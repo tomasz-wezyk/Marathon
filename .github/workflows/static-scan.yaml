@@ -112,3 +112,24 @@ jobs:
           path: /tmp/hadolint-results.sarif
 
       # ======================================================
+
+      - name: Create empty ".truffleignore" in case it doesn't exist
+        run: touch .truffleignore
+
+      - name: "Secret Scan with Trufflehog"
+        uses: trufflesecurity/trufflehog@37b77001d0174ebec2fcca2bd83ff83a6d45a3ab # v3.95.3
+        continue-on-error: true # adjust on your needs to automatically fail or move to a separate workflow if needed
+        with: # exclusions in .truffleignore file
+          # Repository path
+          path: ./
+          # Start scanning from here (usually main branch).
+          base: ${{ github.head_ref }}
+          # Scan commits until here (usually dev branch).
+          #head: # optional
+          # Extra args to be passed to the trufflehog cli.
+          extra_args: --exclude-paths=.truffleignore --no-verification
+
+
+  # ======================================================
+
+
