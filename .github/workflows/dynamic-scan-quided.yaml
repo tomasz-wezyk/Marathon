@@ -1,0 +1,71 @@
+name: Dynamic Guided Scans
+
+on:
+  #push:
+  workflow_dispatch: # to allow to run manually
+
+permissions: # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
+  contents: read
+
+jobs:
+  DAST-Guided-Scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Sources
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up JDK for Maven build
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: 11
+          distribution: "temurin"
+
+      - name: Setup Maven Dependency Cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build with Maven
+        run: cd marathon || :; mvn clean install -DskipTests
+
+      - name: Deploy Marathon for Local Integration Tests
+        run: cd marathon || :; cd integration && ./start-integration.sh
+
+      - name: Set up JDK for OWASP ZAP (17)
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          java-version: 17
+          distribution: "temurin"
+
+      - name: Download OWASP ZAP # TODO consider caching the downloaded ZAP?
+        run: |
+          wget https://github.com/zaproxy/zaproxy/releases/download/v2.17.0/ZAP_2.17.0_Crossplatform.zip && \
+          unzip ZAP_2.17.0_Crossplatform.zip && \
+          rm ZAP_2.17.0_Crossplatform.zip && \
+          mv ZAP_2.17.0 ZAP && \
+          cd ZAP
+
+      - name: Start OWASP ZAP in Background
+        run: cd ZAP && pwd && nohup ./zap.sh -daemon -port 7777 -host 127.0.0.1 -config api.disablekey=true -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.incerrordetails=true &
+
+      - name: Guided Scan with OWASP ZAP and Test-Automation
+        run: sleep 30 && cd marathon || :; cd integration && ./zap-guided-scan.sh
+
+      - name: Upload OWASP ZAP Report as Artifact (HTML)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: report.html
+          path: /tmp/report.html
+
+#      - name: Upload OWASP ZAP Report as Artifact (SARIF)
+#        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+#        with:
+#          name: report.json
+#          path: /tmp/report.json
