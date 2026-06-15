@@ -41,3 +41,14 @@ jobs:
         run: cd marathon || :; mvn clean install # -DskipTests com.github.spotbugs:spotbugs-maven-plugin:3.1.12:spotbugs
 
       # ======================================================
+
+      - name: Generate CycloneDX SBOM
+        run: mvn org.cyclonedx:cyclonedx-maven-plugin:2.7.9:makeAggregateBom # outputs to target/bom.json and/or bom.xml
+
+      - name: Upload SBOM as Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom-cyclonedx.json
+          path: target/bom.json
+
+      # ======================================================
