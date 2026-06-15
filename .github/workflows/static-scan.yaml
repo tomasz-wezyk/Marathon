@@ -68,3 +68,26 @@ jobs:
           path: ${{ steps.scan.outputs.sarif }}
 
       # ======================================================
+
+      - name: Download SpotBugs CLI + FindSecBugs Rule Pack
+        run: |
+          wget -O spotbugs.tgz https://github.com/spotbugs/spotbugs/releases/download/4.9.3/spotbugs-4.9.3.tgz
+          tar -xzf spotbugs.tgz
+          mv spotbugs-*/ spotbugs/
+
+          wget -O findsecbugs.jar https://search.maven.org/remotecontent?filepath=com/h3xstream/findsecbugs/findsecbugs-plugin/1.12.0/findsecbugs-plugin-1.12.0.jar
+          mv findsecbugs.jar spotbugs/plugin/.
+
+      - name: Run SpotBugs CLI (SARIF)
+        run: |
+          spotbugs/bin/spotbugs -sarif:/tmp/raw-spotbugs-output.txt -effort:max -low -auxclasspath lib:target/classes target/classes > /tmp/raw-spotbugs-output.txt
+          grep -A100000 '{"version"' /tmp/raw-spotbugs-output.txt > /tmp/spotbugs-results.sarif
+
+      - name: Upload SpotBugs SARIF Results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: # Yep, you can open this file in your IDE: Just drag and drop it into IntelliJ IDEA or Visual Studio Code
+          name: spotbugs-scan-results.sarif
+          path: /tmp/spotbugs-results.sarif
+
+      # ======================================================
+
