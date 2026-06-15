@@ -52,3 +52,19 @@ jobs:
           path: target/bom.json
 
       # ======================================================
+
+      - name: Grype Dependency Scanner (Report)
+        id: scan
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+        with:
+          path: "."
+          #acs-report-enable: true
+          fail-build: false # to always generate the report, can be set to true if you wish to fail the build on issues
+
+      - name: Upload Grype SARIF Results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with: # Yep, you can open this file in your IDE: Just drag and drop it into IntelliJ IDEA or Visual Studio Code
+          name: grype-scan-results.sarif
+          path: ${{ steps.scan.outputs.sarif }}
+
+      # ======================================================
